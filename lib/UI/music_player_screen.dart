@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:marquee/marquee.dart'; // Dùng để chạy chữ nếu tên bài quá dài
+import 'package:marquee/marquee.dart';
 import 'package:just_audio/just_audio.dart';
 import '../logic/music_provider.dart';
-import '../database/database_helper.dart';
 
 class MusicPlayerScreen extends StatefulWidget {
   const MusicPlayerScreen({super.key});
@@ -14,7 +13,6 @@ class MusicPlayerScreen extends StatefulWidget {
 }
 
 class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
-  // Hàm format thời gian (ví dụ: 0:00 / 3:45)
   String _formatDuration(Duration? duration) {
     if (duration == null) return "--:--";
     String twoDigits(int n) => n.toString().padLeft(2, "0");
@@ -25,33 +23,37 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Lấy chiều cao màn hình để căn chỉnh
     final height = MediaQuery.of(context).size.height;
 
     return Consumer<MusicProvider>(
       builder: (context, provider, child) {
         final song = provider.currentSong;
-        // Nếu không có bài hát (lỗi), đóng màn hình này lại
         if (song == null) {
           Navigator.pop(context);
           return const SizedBox();
         }
 
         return Scaffold(
-          backgroundColor: const Color(0xFF121212), // Nền đen chủ đạo
+          backgroundColor: const Color(0xFF121212),
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: IconButton(
               icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 30),
-              onPressed: () => Navigator.pop(context), // Nút đóng
+              onPressed: () => Navigator.pop(context),
             ),
             title: const Text("Đang phát", style: TextStyle(color: Colors.white, fontSize: 16)),
             centerTitle: true,
             actions: [
+              // Nút Thả tim (Yêu thích)
               IconButton(
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                onPressed: () {}, // Tính năng mở rộng sau này
+                icon: Icon(
+                  song.isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: song.isFavorite ? Colors.red : Colors.white,
+                ),
+                onPressed: () {
+                  provider.toggleFavorite(song);
+                },
               ),
             ],
           ),
@@ -60,9 +62,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
             child: Column(
               children: [
                 SizedBox(height: height * 0.05),
-
-                // 1. ẢNH BÌA LỚN (Có đổ bóng)
-                Hero( // Hiệu ứng chuyển cảnh mượt
+                // Ảnh bìa
+                Hero(
                   tag: 'album_art',
                   child: Container(
                     height: height * 0.4,
@@ -70,11 +71,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.5),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
+                        BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20, offset: const Offset(0, 10)),
                       ],
                     ),
                     child: ClipRRect(
@@ -82,64 +79,44 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                       child: CachedNetworkImage(
                         imageUrl: song.artUri,
                         fit: BoxFit.cover,
-                        errorWidget: (c, u, e) => Container(
-                          color: Colors.grey[800],
-                          child: const Icon(Icons.music_note, size: 80, color: Colors.white),
-                        ),
+                        errorWidget: (c, u, e) => Container(color: Colors.grey[800], child: const Icon(Icons.music_note, size: 80, color: Colors.white)),
                       ),
                     ),
                   ),
                 ),
-
                 SizedBox(height: height * 0.08),
 
-                // 2. TÊN BÀI HÁT & CA SĨ
+                // Tên bài hát
                 SizedBox(
                   height: 40,
-                  child: Marquee( // Chữ chạy nếu tên quá dài
+                  child: Marquee(
                     text: song.title,
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                    scrollAxis: Axis.horizontal,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    blankSpace: 20.0,
-                    velocity: 30.0,
-                    pauseAfterRound: const Duration(seconds: 3),
+                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                    scrollAxis: Axis.horizontal, crossAxisAlignment: CrossAxisAlignment.start,
+                    blankSpace: 20.0, velocity: 30.0, pauseAfterRound: const Duration(seconds: 3),
                   ),
                 ),
-                Text(
-                  song.artist,
-                  style: const TextStyle(color: Colors.grey, fontSize: 18),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-
+                Text(song.artist, style: const TextStyle(color: Colors.grey, fontSize: 18), maxLines: 1, overflow: TextOverflow.ellipsis),
                 const Spacer(),
 
-                // 3. THANH SLIDER (TIẾN ĐỘ BÀI HÁT)
+                // Slider
                 StreamBuilder<Duration>(
                   stream: provider.audioPlayer.positionStream,
                   builder: (context, snapshot) {
                     final position = snapshot.data ?? Duration.zero;
                     final duration = provider.audioPlayer.duration ?? Duration.zero;
-
                     return Column(
                       children: [
                         SliderTheme(
                           data: SliderTheme.of(context).copyWith(
                             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                            trackHeight: 2,
-                            activeTrackColor: Colors.white,
-                            inactiveTrackColor: Colors.grey[800],
-                            thumbColor: Colors.white,
+                            trackHeight: 2, activeTrackColor: Colors.white,
+                            inactiveTrackColor: Colors.grey[800], thumbColor: Colors.white,
                           ),
                           child: Slider(
-                            min: 0,
-                            max: duration.inSeconds.toDouble(),
+                            min: 0, max: duration.inSeconds.toDouble(),
                             value: position.inSeconds.toDouble().clamp(0, duration.inSeconds.toDouble()),
-                            onChanged: (value) {
-                              provider.seek(Duration(seconds: value.toInt()));
-                            },
+                            onChanged: (value) => provider.seek(Duration(seconds: value.toInt())),
                           ),
                         ),
                         Padding(
@@ -156,52 +133,53 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
                     );
                   },
                 ),
-
                 SizedBox(height: height * 0.02),
 
-                // 4. CÁC NÚT ĐIỀU KHIỂN
+                // --- BẢNG ĐIỀU KHIỂN (Controls) ---
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Nút Shuffle (Xáo trộn)
                     IconButton(
-                      icon: const Icon(Icons.shuffle, color: Colors.grey),
-                      onPressed: () {}, // Chưa implement
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.skip_previous, color: Colors.white, size: 36),
-                      onPressed: () {}, // Chưa implement logic bài trước
+                      icon: Icon(Icons.shuffle,
+                          color: provider.isShuffle ? const Color(0xFF1DB954) : Colors.grey),
+                      onPressed: () => provider.toggleShuffle(),
                     ),
 
-                    // Nút Play/Pause LỚN
+                    // Nút Previous (Lùi bài)
+                    IconButton(
+                      icon: const Icon(Icons.skip_previous, color: Colors.white, size: 36),
+                      onPressed: () => provider.playPrevious(),
+                    ),
+
+                    // Nút Play/Pause
                     Container(
                       height: 70, width: 70,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
+                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
                       child: IconButton(
-                        icon: Icon(
-                          provider.isPlaying ? Icons.pause : Icons.play_arrow,
-                          color: Colors.black, size: 36,
-                        ),
+                        icon: Icon(provider.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.black, size: 36),
                         onPressed: () {
-                          if (provider.isPlaying) provider.pause();
-                          else provider.resume();
+                          if (provider.isPlaying) provider.pause(); else provider.resume();
                         },
                       ),
                     ),
 
+                    // Nút Next (Qua bài)
                     IconButton(
                       icon: const Icon(Icons.skip_next, color: Colors.white, size: 36),
-                      onPressed: () {}, // Chưa implement logic bài sau
+                      onPressed: () => provider.playNext(),
                     ),
+
+                    // Nút Repeat (Lặp lại)
                     IconButton(
-                      icon: const Icon(Icons.repeat, color: Colors.grey),
-                      onPressed: () {}, // Chưa implement
+                      icon: Icon(
+                          provider.loopMode == LoopMode.one ? Icons.repeat_one : Icons.repeat,
+                          color: provider.loopMode != LoopMode.off ? const Color(0xFF1DB954) : Colors.grey
+                      ),
+                      onPressed: () => provider.toggleRepeat(),
                     ),
                   ],
                 ),
-
                 SizedBox(height: height * 0.05),
               ],
             ),

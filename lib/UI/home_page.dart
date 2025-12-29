@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../logic/music_provider.dart';
-import 'music_player_screen.dart';
+import 'music_player_screen.dart'; // Đảm bảo import màn hình player
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -16,38 +16,65 @@ class HomePage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Container(
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: TextField(
-            controller: searchController,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-                hintText: "Tìm trên SoundCloud...",
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                border: InputBorder.none,
-                prefixIcon: const Icon(Icons.cloud_queue, color: Colors.orange), // Logo cam đặc trưng
-                contentPadding: const EdgeInsets.only(top: 5),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.send, color: Colors.white),
-                  onPressed: () {
-                    if(searchController.text.isNotEmpty) {
-                      context.read<MusicProvider>().fetchMusic(searchController.text);
-                      FocusScope.of(context).unfocus();
+        titleSpacing: 10, // Giảm khoảng cách mặc định để vừa vặn hơn
+        title: Row(
+          children: [
+            // 1. Ô TÌM KIẾM
+            Expanded(
+              child: Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: TextField(
+                  controller: searchController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: "Tìm trên SoundCloud...",
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                    border: InputBorder.none,
+                    prefixIcon: const Icon(Icons.search, color: Colors.white),
+                    contentPadding: const EdgeInsets.only(top: 5),
+                  ),
+                  onSubmitted: (val) {
+                    if (val.isNotEmpty) {
+                      context.read<MusicProvider>().fetchMusic(val);
                     }
                   },
-                )
+                ),
+              ),
             ),
-            onSubmitted: (val) {
-              if(val.isNotEmpty) context.read<MusicProvider>().fetchMusic(val);
-            },
-          ),
+
+            const SizedBox(width: 5),
+
+            // 2. NÚT HOME (Quay về trang chủ/Gợi ý)
+            IconButton(
+              icon: const Icon(Icons.home_filled, color: Colors.white),
+              tooltip: "Trang chủ",
+              onPressed: () {
+                // Xóa ô tìm kiếm
+                searchController.clear();
+                // Ẩn bàn phím nếu đang hiện
+                FocusScope.of(context).unfocus();
+                // Tải lại nhạc gợi ý ban đầu (Ví dụ: Lofi Chill, Trending...)
+                context.read<MusicProvider>().fetchMusic("Lofi Chill");
+              },
+            ),
+
+            // 3. NÚT YÊU THÍCH (Mở Playlist tim)
+            IconButton(
+              icon: const Icon(Icons.favorite, color: Colors.redAccent),
+              tooltip: "Danh sách yêu thích",
+              onPressed: () {
+                context.read<MusicProvider>().showFavorites();
+              },
+            )
+          ],
         ),
       ),
 
+      // --- PHẦN BODY GIỮ NGUYÊN ---
       body: Consumer<MusicProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
@@ -56,7 +83,7 @@ class HomePage extends StatelessWidget {
 
           if (provider.songs.isEmpty) {
             return const Center(
-                child: Text("Hãy thử tìm kiếm bài hát!",
+                child: Text("Danh sách trống.",
                     style: TextStyle(color: Colors.grey))
             );
           }
@@ -92,7 +119,18 @@ class HomePage extends StatelessWidget {
                       ),
                       subtitle: Text(song.artist, style: const TextStyle(color: Colors.grey)),
                       onTap: () => provider.playSong(song),
-                      trailing: _buildTrailingIcon(isSelected, provider),
+
+                      // Hiển thị trạng thái đang phát hoặc trái tim bên phải
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (song.isFavorite)
+                            const Icon(Icons.favorite, color: Colors.red, size: 16),
+                          const SizedBox(width: 10),
+                          if (isSelected && provider.isPlaying)
+                            const Icon(Icons.graphic_eq, color: Colors.orange),
+                        ],
+                      ),
                     );
                   },
                 ),
@@ -106,28 +144,12 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget? _buildTrailingIcon(bool isSelected, MusicProvider provider) {
-    if (!isSelected) return null;
-
-    if (provider.isBuffering) {
-      return const SizedBox(width: 20, height: 20,
-          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange));
-    }
-
-    if (provider.isPlaying) {
-      return const Icon(Icons.graphic_eq, color: Colors.orange);
-    }
-    return null;
-  }
-
   Widget _buildMiniPlayer(BuildContext context, MusicProvider provider) {
-    // Bọc trong GestureDetector để bắt sự kiện nhấn
     return GestureDetector(
       onTap: () {
-        // Mở màn hình Full Player theo kiểu trượt từ dưới lên (ModalBottomSheet)
         showModalBottomSheet(
           context: context,
-          isScrollControlled: true, // Cho phép full màn hình
+          isScrollControlled: true,
           backgroundColor: Colors.transparent,
           builder: (context) => const MusicPlayerScreen(),
         );
@@ -139,7 +161,6 @@ class HomePage extends StatelessWidget {
           top: false,
           child: Row(
             children: [
-              // Ảnh bìa nhỏ (Có Hero tag để tạo hiệu ứng phóng to)
               Hero(
                 tag: 'album_art',
                 child: ClipRRect(
@@ -152,8 +173,6 @@ class HomePage extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-
-              // Tên bài hát
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,8 +187,6 @@ class HomePage extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // Nút Play/Pause nhỏ
               if (provider.isBuffering)
                 const Padding(
                   padding: EdgeInsets.all(12.0),
@@ -183,7 +200,6 @@ class HomePage extends StatelessWidget {
                     color: Colors.white, size: 40,
                   ),
                   onPressed: () {
-                    // Cần xử lý sự kiện onPressed để nó KHÔNG kích hoạt onTap của GestureDetector cha
                     if(provider.isPlaying) provider.pause();
                     else provider.resume();
                   },
