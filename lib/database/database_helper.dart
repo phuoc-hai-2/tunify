@@ -1,6 +1,11 @@
+// lib/database/database_helper.dart
+
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+// Import thư viện SoundCloud (không cần 'as sc' ở đây nếu không dùng Container)
+import 'package:soundcloud_explode_dart/soundcloud_explode_dart.dart';
+
+// ... (Phần còn lại giữ nguyên như code cũ tôi đã gửi)
 
 // ===================== MODEL SONG =====================
 class Song {
@@ -8,7 +13,7 @@ class Song {
   final String title;
   final String artist;
   final String artUri;
-  final String audioUrl; // Lưu ý: Đây là VideoID của YouTube
+  final String audioUrl;
   final String? localPath;
 
   Song({
@@ -20,19 +25,28 @@ class Song {
     this.localPath,
   });
 
-  // Chuyển dữ liệu từ Video YouTube sang Song
-  factory Song.fromYoutube(Video video) {
+  // --- LOGIC MỚI: Đã thêm .toString() để sửa lỗi Object -> String ---
+  factory Song.fromSoundCloud(Track track) {
+    // 1. Xử lý ảnh bìa an toàn (chấp nhận cả String hoặc Uri)
+    String artwork = track.artworkUrl?.toString() ?? "";
+
+    if (artwork.isNotEmpty) {
+      artwork = artwork.replaceAll('large', 't500x500');
+    } else {
+      // Ảnh mặc định
+      artwork = "https://i1.sndcdn.com/artworks-000000000000-000000-t500x500.jpg";
+    }
+
     return Song(
-      id: video.id.value,
-      title: video.title,
-      artist: video.author,
-      // Lấy ảnh thumbnail chất lượng cao nhất
-      artUri: video.thumbnails.highResUrl,
-      audioUrl: video.id.value,
+      id: track.id.toString(),
+      // 2. Thêm .toString() để đảm bảo không bị lỗi kiểu dữ liệu
+      title: track.title.toString(),
+      artist: track.user.username.toString(),
+      artUri: artwork,
+      audioUrl: track.id.toString(),
     );
   }
 
-  // Để lưu vào SQLite (nếu cần sau này)
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -54,7 +68,7 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('tunify_youtube.db');
+    _database = await _initDB('tunify_sc_v2.db'); // Đổi tên DB để tránh cache cũ
     return _database!;
   }
 

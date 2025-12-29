@@ -30,27 +30,27 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-    # --- Cốt lõi Âm thanh ---
-  youtube_explode_dart: ^2.0.2
-  just_audio: ^0.9.36
-  audio_service: ^0.18.12
+  # --- THƯ VIỆN CHÍNH ---
+  soundcloud_explode_dart: ^1.0.4  # Thư viện SoundCloud
+  just_audio: ^0.9.36              # Trình phát nhạc
+  audio_service: ^0.18.12          # Chạy nền
+  provider: ^6.1.1                 # Quản lý trạng thái
 
-    # --- Giao diện (UI) ---
-  miniplayer: ^1.0.1          # Tạo hiệu ứng thu nhỏ/phóng to player
-  palette_generator: ^0.3.3   # Lấy màu từ ảnh
-  shimmer: ^3.0.0             # Hiệu ứng loading đẹp
-  carousel_slider: ^4.2.1     # Banner trượt
-  marquee: ^2.2.3             # Chữ chạy
-  cached_network_image: ^3.3.0 # Load ảnh nhanh
-  google_fonts: ^6.1.0        # Font chữ đẹp
-
-    # --- Hệ thống & Data ---
-  permission_handler: ^11.3.1
-  path_provider: ^2.1.2
+  # --- UI & DATA ---
+  cached_network_image: ^3.3.0
   sqflite: ^2.3.0
-  provider: ^6.1.1
+  path_provider: ^2.1.2
+  permission_handler: ^11.3.1
+
+  # UI Components
+  miniplayer: ^1.0.1
+  palette_generator: ^0.3.3
+  shimmer: ^3.0.0
+  carousel_slider: ^4.2.1
+  marquee: ^2.2.3
+  google_fonts: ^6.1.0
+  flutter_downloader: ^1.11.0
   http: ^1.2.0
-  flutter_downloader: ^1.11.0 # Đã thêm bản ổn định mới nhất
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

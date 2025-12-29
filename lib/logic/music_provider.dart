@@ -7,14 +7,14 @@ class MusicProvider extends ChangeNotifier {
   final MusicService _service = MusicService();
   final AudioPlayer _audioPlayer = AudioPlayer();
 
-  // --- Biến trạng thái ---
+  // --- TRẠNG THÁI ---
   List<Song> _songs = [];
-  bool _isLoading = false;      // Đang tìm kiếm
-  bool _isPlaying = false;      // Đang phát nhạc
-  bool _isBuffering = false;    // Đang tải link nhạc (quan trọng với YouTube)
+  bool _isLoading = false;
+  bool _isPlaying = false;
+  bool _isBuffering = false;
   Song? _currentSong;
 
-  // --- Getters ---
+  // --- GETTERS ---
   List<Song> get songs => _songs;
   bool get isLoading => _isLoading;
   bool get isPlaying => _isPlaying;
@@ -22,11 +22,11 @@ class MusicProvider extends ChangeNotifier {
   Song? get currentSong => _currentSong;
   AudioPlayer get audioPlayer => _audioPlayer;
 
-  // --- Khởi tạo ---
+  // --- INIT ---
   MusicProvider() {
     _initAudioPlayer();
-    // Tự động tìm nhạc hot khi mở app
-    fetchMusic("V-Pop Hits");
+    // Mặc định tìm nhạc Chill khi mở app
+    fetchMusic("Lofi Chill");
   }
 
   void _initAudioPlayer() {
@@ -38,6 +38,7 @@ class MusicProvider extends ChangeNotifier {
         _isPlaying = false;
         _audioPlayer.pause();
         _audioPlayer.seek(Duration.zero);
+        notifyListeners();
       } else {
         _isPlaying = isPlaying;
       }
@@ -45,7 +46,7 @@ class MusicProvider extends ChangeNotifier {
     });
   }
 
-  // --- Tìm kiếm ---
+  // --- TÌM KIẾM ---
   Future<void> fetchMusic(String query) async {
     _isLoading = true;
     _songs = [];
@@ -54,50 +55,60 @@ class MusicProvider extends ChangeNotifier {
     try {
       _songs = await _service.searchSongs(query);
     } catch (e) {
-      print("Lỗi Provider: $e");
+      print("Provider Error: $e");
     }
 
     _isLoading = false;
     notifyListeners();
   }
 
-  // --- Phát nhạc (Logic chính) ---
+  // --- PHÁT NHẠC ---
   Future<void> playSong(Song song) async {
     // Nếu chọn bài mới
     if (_currentSong?.id != song.id) {
       _currentSong = song;
-      _isBuffering = true; // Bắt đầu xoay vòng loading ở MiniPlayer
+      _isBuffering = true;
       notifyListeners();
 
       try {
-        // Bước 1: Lấy link stream thật từ YouTube (Mất 1-2s)
-        final String streamUrl = await _service.getAudioStreamUrl(song.id);
+        // Lấy link từ SoundCloud Service
+        String streamUrl = await _service.getAudioStreamUrl(song.id);
 
         if (streamUrl.isNotEmpty) {
-          // Bước 2: Load link và phát
           await _audioPlayer.setUrl(streamUrl);
           _audioPlayer.play();
         } else {
-          print("Không lấy được link stream");
+          print("Không lấy được link stream.");
         }
       } catch (e) {
-        print("Lỗi phát nhạc: $e");
+        print("Play Error: $e");
       }
 
-      _isBuffering = false; // Tắt vòng loading
+      _isBuffering = false;
       notifyListeners();
-    } else {
-      // Nếu bấm vào bài đang hát -> Toggle Play/Pause
+    }
+    // Nếu bấm lại bài đang phát -> Toggle Pause/Play
+    else {
       if (_isPlaying) {
-        _audioPlayer.pause();
+        pause();
       } else {
-        _audioPlayer.play();
+        resume();
       }
     }
   }
 
-  void pause() => _audioPlayer.pause();
-  void resume() => _audioPlayer.play();
+  // --- ĐIỀU KHIỂN ---
+  void pause() {
+    _audioPlayer.pause();
+    notifyListeners();
+  }
+
+  void resume() {
+    _audioPlayer.play();
+    notifyListeners();
+  }
+
+  void seek(Duration pos) => _audioPlayer.seek(pos);
 
   @override
   void dispose() {

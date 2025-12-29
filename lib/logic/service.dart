@@ -1,40 +1,71 @@
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:soundcloud_explode_dart/soundcloud_explode_dart.dart' as sc;
 import '../../database/database_helper.dart';
 
 class MusicService {
-  final YoutubeExplode _yt = YoutubeExplode();
+  final sc.SoundcloudClient _sc = sc.SoundcloudClient();
 
+  // --- TÌM KIẾM ---
   Future<List<Song>> searchSongs(String query) async {
     try {
-      final result = await _yt.search.search(query);
-      return result.map((video) => Song.fromYoutube(video)).toList();
+      // Tìm kiếm Tracks
+      var builder = _sc.search(query, searchFilter: sc.SearchFilter.tracks);
+
+      List<Song> songs = [];
+
+      await for (var batch in builder) {
+        for (var item in batch) {
+          // Chỉ cần xử lý đúng loại TrackSearchResult
+          if (item is sc.TrackSearchResult) {
+            // Xử lý ảnh bìa
+            String artwork = item.artworkUrl?.toString() ?? "";
+            if (artwork.isNotEmpty) {
+              artwork = artwork.replaceAll('large', 't500x500');
+            } else {
+              artwork = "https://i1.sndcdn.com/artworks-000000000000-000000-t500x500.jpg";
+            }
+
+            // Tạo đối tượng Song thủ công từ kết quả tìm kiếm
+            songs.add(Song(
+              id: item.id.toString(),
+              title: item.title.toString(),
+              artist: item.user.username.toString(),
+              artUri: artwork,
+              audioUrl: item.id.toString(),
+            ));
+          }
+          // ĐÃ XÓA đoạn "else if (item is sc.Track)" vì nó gây ra lỗi
+        }
+
+        // Chỉ lấy lô kết quả đầu tiên (khoảng 10-20 bài)
+        if (songs.isNotEmpty) break;
+      }
+
+      return songs;
     } catch (e) {
-      print("Lỗi tìm kiếm: $e");
+      print("Lỗi tìm kiếm SoundCloud: $e");
       return [];
     }
   }
 
-  // --- ĐÃ SỬA LẠI HÀM NÀY ĐỂ FIX LỖI KHÔNG NGHE ĐƯỢC ---
-  Future<String> getAudioStreamUrl(String videoId) async {
+  // --- LẤY LINK STREAM ---
+  Future<String> getAudioStreamUrl(String trackId) async {
     try {
-      var manifest = await _yt.videos.streamsClient.getManifest(videoId);
+      final trackIdInt = int.parse(trackId);
+      final streams = await _sc.tracks.getStreams(trackIdInt);
 
-      // FIX: Ưu tiên lấy định dạng MP4 (AAC) để dễ chạy trên mọi máy
-      var audioStream = manifest.audioOnly.firstWhere(
-              (stream) => stream.container == StreamContainer.mp4,
-          // Nếu không có MP4 thì lấy luồng audio bất kỳ có bitrate cao nhất
-          orElse: () => manifest.audioOnly.withHighestBitrate()
-      );
+      // Lấy link stream đầu tiên tìm thấy
+      if (streams.isNotEmpty) {
+        final firstStream = streams.first;
+        print("Stream URL: ${firstStream.url}");
+        return firstStream.url.toString();
+      }
 
-      print("Đã lấy được Link nhạc: ${audioStream.url}"); // In ra để debug
-      return audioStream.url.toString();
+      return "";
     } catch (e) {
-      print("Lỗi lấy link stream: $e");
+      print("Lỗi lấy link stream ($trackId): $e");
       return "";
     }
   }
 
-  void dispose() {
-    _yt.close();
-  }
+  void dispose() { }
 }
