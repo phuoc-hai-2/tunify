@@ -2,14 +2,12 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:soundcloud_explode_dart/soundcloud_explode_dart.dart';
 
-// ===================== MODEL SONG =====================
 class Song {
   final String id;
   final String title;
   final String artist;
   final String artUri;
   final String audioUrl;
-  // Thêm biến để check xem bài này có phải yêu thích không (dùng cho UI)
   bool isFavorite;
 
   Song({
@@ -45,7 +43,7 @@ class Song {
       artist: map['artist'],
       artUri: map['artUri'],
       audioUrl: map['audioUrl'],
-      isFavorite: true, // Nếu lấy từ bảng favorites ra thì mặc định là true
+      isFavorite: true,
     );
   }
 
@@ -60,7 +58,6 @@ class Song {
   }
 }
 
-// ===================== DATABASE HELPER =====================
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
@@ -69,7 +66,7 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('tunify_final_v1.db'); // Đổi tên DB mới
+    _database = await _initDB('tunify_final_v1.db');
     return _database!;
   }
 
@@ -80,7 +77,6 @@ class DatabaseHelper {
   }
 
   Future _createDB(Database db, int version) async {
-    // Tạo bảng yêu thích
     await db.execute('''
     CREATE TABLE favorites (
       id TEXT PRIMARY KEY,
@@ -90,9 +86,19 @@ class DatabaseHelper {
       audioUrl TEXT
     )
     ''');
+
+    await db.execute('''
+    CREATE TABLE songs (
+      id TEXT PRIMARY KEY,
+      title TEXT,
+      artist TEXT,
+      artUri TEXT,
+      audioUrl TEXT,
+      localPath TEXT
+    )
+    ''');
   }
 
-  // --- CRUD FAVORITES ---
   Future<void> addFavorite(Song song) async {
     final db = await instance.database;
     await db.insert('favorites', song.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);

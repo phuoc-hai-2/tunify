@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../logic/music_provider.dart';
-import 'music_player_screen.dart'; // Đảm bảo import màn hình player
+import 'package:tunify/logic/music_provider.dart';
+import 'package:tunify/UI/music_player_screen.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -57,12 +57,12 @@ class HomePage extends StatelessWidget {
                 searchController.clear();
                 // Ẩn bàn phím nếu đang hiện
                 FocusScope.of(context).unfocus();
-                // Tải lại nhạc gợi ý ban đầu (Ví dụ: Lofi Chill, Trending...)
+                // Tải lại nhạc gợi ý ban đầu
                 context.read<MusicProvider>().fetchMusic("Lofi Chill");
               },
             ),
 
-            // 3. NÚT YÊU THÍCH (Mở Playlist tim)
+            // 3. NÚT YÊU THÍCH
             IconButton(
               icon: const Icon(Icons.favorite, color: Colors.redAccent),
               tooltip: "Danh sách yêu thích",

@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:marquee/marquee.dart';
 import 'package:just_audio/just_audio.dart';
-import '../logic/music_provider.dart';
+import 'package:tunify/logic/music_provider.dart';
 
 class MusicPlayerScreen extends StatefulWidget {
   const MusicPlayerScreen({super.key});

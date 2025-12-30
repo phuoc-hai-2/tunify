@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'dart:math';
-import '../logic/service.dart';
-import '../database/database_helper.dart';
+import 'package:tunify/logic/service.dart';
+import 'package:tunify/database/database_helper.dart';
 
 class MusicProvider extends ChangeNotifier {
   final MusicService _service = MusicService();
   final AudioPlayer _audioPlayer = AudioPlayer();
 
-  // --- DATA ---
   List<Song> _songs = [];          // Danh sách bài hát đang hiển thị (Search hoặc Favorites)
   List<Song> _originalQueue = [];  // Hàng đợi gốc (dùng khi tắt shuffle)
   List<Song> _playQueue = [];      // Hàng đợi thực tế đang phát (có thể đã shuffle)
