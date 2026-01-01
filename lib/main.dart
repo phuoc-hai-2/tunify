@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'logic/music_provider.dart';
-import 'UI/home_page.dart';
+import 'package:tunify/logic/music_provider.dart';
+import 'package:tunify/UI/login_page.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(
     MultiProvider(
       providers: [
@@ -30,7 +31,7 @@ class MyApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: const HomePage(),
+      home: const LocalLoginPage(),
     );
   }
 }

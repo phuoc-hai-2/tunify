@@ -3,95 +3,87 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:tunify/logic/music_provider.dart';
 import 'package:tunify/UI/music_player_screen.dart';
+import 'package:tunify/UI/login_page.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final TextEditingController searchController = TextEditingController();
+  State<HomePage> createState() => _HomePageState();
+}
 
+class _HomePageState extends State<HomePage> {
+  int _currentIndex = 0; // 0: Home, 1: Favorites, 2: Downloads
+  final TextEditingController _searchCtrl = TextEditingController();
+
+  void _onTabTapped(int index) {
+    final provider = context.read<MusicProvider>();
+
+    if (index == 3) { // Nút Logout
+      provider.logout();
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LocalLoginPage()));
+      return;
+    }
+
+    setState(() => _currentIndex = index);
+
+    // Load dữ liệu tương ứng với Tab
+    if (index == 0) {
+      if (_searchCtrl.text.isEmpty) provider.fetchMusic("V-Pop Hits");
+      // Nếu có text tìm kiếm thì giữ nguyên kết quả tìm kiếm
+    } else if (index == 1) {
+      provider.showFavorites();
+    } else if (index == 2) {
+      provider.showDownloads();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
+
+      // 1. THANH TÌM KIẾM Ở TRÊN
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.black.withOpacity(0.5),
         elevation: 0,
-        titleSpacing: 10, // Giảm khoảng cách mặc định để vừa vặn hơn
-        title: Row(
-          children: [
-            // 1. Ô TÌM KIẾM
-            Expanded(
-              child: Container(
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: TextField(
-                  controller: searchController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: "Tìm trên SoundCloud...",
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                    border: InputBorder.none,
-                    prefixIcon: const Icon(Icons.search, color: Colors.white),
-                    contentPadding: const EdgeInsets.only(top: 5),
-                  ),
-                  onSubmitted: (val) {
-                    if (val.isNotEmpty) {
-                      context.read<MusicProvider>().fetchMusic(val);
-                    }
-                  },
-                ),
-              ),
+        title: Container(
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: TextField(
+            controller: _searchCtrl,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: "Tìm bài hát, nghệ sĩ...",
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+              border: InputBorder.none,
+              prefixIcon: const Icon(Icons.search, color: Colors.white),
+              contentPadding: const EdgeInsets.only(top: 5),
             ),
-
-            const SizedBox(width: 5),
-
-            // 2. NÚT HOME (Quay về trang chủ/Gợi ý)
-            IconButton(
-              icon: const Icon(Icons.home_filled, color: Colors.white),
-              tooltip: "Trang chủ",
-              onPressed: () {
-                // Xóa ô tìm kiếm
-                searchController.clear();
-                // Ẩn bàn phím nếu đang hiện
-                FocusScope.of(context).unfocus();
-                // Tải lại nhạc gợi ý ban đầu
-                context.read<MusicProvider>().fetchMusic("Lofi Chill");
-              },
-            ),
-
-            // 3. NÚT YÊU THÍCH
-            IconButton(
-              icon: const Icon(Icons.favorite, color: Colors.redAccent),
-              tooltip: "Danh sách yêu thích",
-              onPressed: () {
-                context.read<MusicProvider>().showFavorites();
-              },
-            )
-          ],
+            onSubmitted: (val) {
+              if (val.isNotEmpty) {
+                setState(() => _currentIndex = 0); // Về tab Home để hiện kết quả
+                context.read<MusicProvider>().fetchMusic(val);
+              }
+            },
+          ),
         ),
       ),
 
-      // --- PHẦN BODY GIỮ NGUYÊN ---
+      //BODY (Danh sách nhạc)
       body: Consumer<MusicProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator(color: Colors.orange));
-          }
-
-          if (provider.songs.isEmpty) {
-            return const Center(
-                child: Text("Danh sách trống.",
-                    style: TextStyle(color: Colors.grey))
-            );
-          }
+          if (provider.isLoading) return const Center(child: CircularProgressIndicator(color: Colors.green));
+          if (provider.songs.isEmpty) return const Center(child: Text("Không có bài hát nào.", style: TextStyle(color: Colors.grey)));
 
           return Column(
             children: [
               Expanded(
                 child: ListView.builder(
+                  cacheExtent: 100, // Tối ưu cuộn
                   itemCount: provider.songs.length,
                   itemBuilder: (context, index) {
                     final song = provider.songs[index];
@@ -104,56 +96,55 @@ class HomePage extends StatelessWidget {
                         child: CachedNetworkImage(
                           imageUrl: song.artUri,
                           width: 50, height: 50, fit: BoxFit.cover,
+                          memCacheWidth: 100, // Giảm RAM
                           placeholder: (c, u) => Container(color: Colors.grey[900]),
                           errorWidget: (c, u, e) => const Icon(Icons.music_note, color: Colors.white),
                         ),
                       ),
                       title: Text(
-                          song.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              color: isSelected ? Colors.orange : Colors.white,
-                              fontWeight: FontWeight.bold
-                          )
+                          song.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: isSelected ? Colors.green : Colors.white, fontWeight: FontWeight.bold)
                       ),
                       subtitle: Text(song.artist, style: const TextStyle(color: Colors.grey)),
+                      trailing: song.localPath != null
+                          ? const Icon(Icons.check_circle, color: Colors.green, size: 16)
+                          : null,
                       onTap: () => provider.playSong(song),
-
-                      // Hiển thị trạng thái đang phát hoặc trái tim bên phải
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (song.isFavorite)
-                            const Icon(Icons.favorite, color: Colors.red, size: 16),
-                          const SizedBox(width: 10),
-                          if (isSelected && provider.isPlaying)
-                            const Icon(Icons.graphic_eq, color: Colors.orange),
-                        ],
-                      ),
                     );
                   },
                 ),
               ),
-
+              // Mini Player
               if (provider.currentSong != null) _buildMiniPlayer(context, provider),
             ],
           );
         },
+      ),
+
+      // THANH ĐIỀU HƯỚNG Ở DƯỚI
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: _onTabTapped,
+        backgroundColor: const Color(0xFF282828),
+        selectedItemColor: const Color(0xFF1DB954),
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: "Favorites"),
+          BottomNavigationBarItem(icon: Icon(Icons.download_done), label: "Downloads"),
+          BottomNavigationBarItem(icon: Icon(Icons.logout), label: "Logout"),
+        ],
       ),
     );
   }
 
   Widget _buildMiniPlayer(BuildContext context, MusicProvider provider) {
     return GestureDetector(
-      onTap: () {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) => const MusicPlayerScreen(),
-        );
-      },
+      onTap: () => showModalBottomSheet(
+        context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+        builder: (_) => const MusicPlayerScreen(),
+      ),
       child: Container(
         color: const Color(0xFF282828),
         padding: const EdgeInsets.all(8),
@@ -161,49 +152,29 @@ class HomePage extends StatelessWidget {
           top: false,
           child: Row(
             children: [
-              Hero(
-                tag: 'album_art',
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: CachedNetworkImage(
-                    imageUrl: provider.currentSong!.artUri,
-                    width: 50, height: 50, fit: BoxFit.cover,
-                    errorWidget: (c,u,e) => const Icon(Icons.music_note, color: Colors.white),
-                  ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: CachedNetworkImage(
+                  imageUrl: provider.currentSong!.artUri,
+                  width: 50, height: 50, fit: BoxFit.cover,
+                  memCacheWidth: 100,
+                  errorWidget: (c,u,e) => const Icon(Icons.music_note, color: Colors.white),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(provider.currentSong!.title,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text(provider.currentSong!.artist,
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(provider.currentSong!.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), maxLines: 1),
+                    Text(provider.currentSong!.artist, style: const TextStyle(color: Colors.grey, fontSize: 12), maxLines: 1),
                   ],
                 ),
               ),
-              if (provider.isBuffering)
-                const Padding(
-                  padding: EdgeInsets.all(12.0),
-                  child: SizedBox(width: 24, height: 24,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
-                )
-              else
-                IconButton(
-                  icon: Icon(
-                    provider.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
-                    color: Colors.white, size: 40,
-                  ),
-                  onPressed: () {
-                    if(provider.isPlaying) provider.pause();
-                    else provider.resume();
-                  },
-                ),
+              IconButton(
+                icon: Icon(provider.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
+                onPressed: () => provider.isPlaying ? provider.pause() : provider.resume(),
+              )
             ],
           ),
         ),
